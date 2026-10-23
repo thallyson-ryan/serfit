@@ -1,0 +1,17 @@
+{
+  "name": "serfit",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Site e sistema da academia SERFIT",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "seed": "node seed.js"
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "dependencies": {
+    "express": "4.22.3"
+  }
+}
