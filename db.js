@@ -72,6 +72,15 @@ if (!colunasUsuarios.includes("plano")) {
     db.exec("UPDATE usuarios SET plano = 'musculacao' WHERE tipo = 'aluno'");
 }
 
+if (!colunasUsuarios.includes("master")) {
+    // professor master: aprova o cadastro de outros professores
+    db.exec("ALTER TABLE usuarios ADD COLUMN master INTEGER NOT NULL DEFAULT 0");
+    db.exec("UPDATE usuarios SET master = 1 WHERE nome = 'RAFAEL' AND tipo = 'professor'");
+}
+
+// a gestão é sempre master
+db.exec("UPDATE usuarios SET master = 1 WHERE tipo = 'gestao' AND master = 0");
+
 if (!colunasUsuarios.includes("professor_id")) {
     // professor escolhido pelo aluno (opcional)
     db.exec("ALTER TABLE usuarios ADD COLUMN professor_id INTEGER REFERENCES usuarios(id) ON DELETE SET NULL");
@@ -131,11 +140,11 @@ function normalizarNome(nome) {
 }
 
 
-function criarUsuario(nome, senha, tipo, { status = "ativo", turno = null, plano = null } = {}) {
+function criarUsuario(nome, senha, tipo, { status = "ativo", turno = null, plano = null, master = false } = {}) {
 
     const { lastInsertRowid } = db.prepare(
-        "INSERT INTO usuarios (nome, senha_hash, tipo, status, turno, plano) VALUES (?, ?, ?, ?, ?, ?)"
-    ).run(normalizarNome(nome), gerarHash(senha), tipo, status, turno, plano);
+        "INSERT INTO usuarios (nome, senha_hash, tipo, status, turno, plano, master) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    ).run(normalizarNome(nome), gerarHash(senha), tipo, status, turno, plano, master ? 1 : 0);
 
     return buscarUsuarioPorId(lastInsertRowid);
 }
@@ -212,6 +221,22 @@ function definirPlanoDoAluno(alunoId, plano) {
 }
 
 
+// lança a mensalidade do mês atual para todo aluno com plano que ainda não tem
+function gerarMensalidadesDoMes() {
+
+    const mes = mesAtual();
+
+    Object.entries(PLANOS).forEach(([plano, { valor_centavos }]) => {
+
+        db.prepare(`
+            INSERT OR IGNORE INTO cobrancas (aluno_id, mes, valor_centavos)
+            SELECT id, ?, ? FROM usuarios
+            WHERE tipo = 'aluno' AND status = 'ativo' AND plano = ?
+        `).run(mes, valor_centavos, plano);
+    });
+}
+
+
 function listarAlunosDoProfessor(professorId) {
 
     return db.prepare(`
@@ -226,7 +251,7 @@ function listarAlunosDoProfessor(professorId) {
 function buscarUsuarioPorNome(nome) {
 
     return db.prepare(
-        "SELECT id, nome, senha_hash, tipo, status, turno, plano, professor_id FROM usuarios WHERE nome = ?"
+        "SELECT id, nome, senha_hash, tipo, status, turno, plano, professor_id, master FROM usuarios WHERE nome = ?"
     ).get(normalizarNome(nome));
 }
 
@@ -234,7 +259,7 @@ function buscarUsuarioPorNome(nome) {
 function buscarUsuarioPorId(id) {
 
     return db.prepare(
-        "SELECT id, nome, tipo, status, turno FROM usuarios WHERE id = ?"
+        "SELECT id, nome, tipo, status, turno, master FROM usuarios WHERE id = ?"
     ).get(id);
 }
 
@@ -306,7 +331,7 @@ function buscarSessao(token) {
     db.prepare("DELETE FROM sessoes WHERE expira_em < ?").run(Date.now());
 
     return db.prepare(`
-        SELECT usuarios.id, usuarios.nome, usuarios.tipo, usuarios.turno
+        SELECT usuarios.id, usuarios.nome, usuarios.tipo, usuarios.turno, usuarios.master
         FROM sessoes
         JOIN usuarios ON usuarios.id = sessoes.usuario_id AND usuarios.status = 'ativo'
         WHERE sessoes.token = ?
@@ -442,6 +467,7 @@ module.exports = {
     listarProfessoresAtivos,
     definirProfessorDoAluno,
     definirPlanoDoAluno,
+    gerarMensalidadesDoMes,
     listarAlunosDoProfessor,
     buscarUsuarioPorNome,
     buscarUsuarioPorId,

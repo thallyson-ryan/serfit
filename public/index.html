@@ -682,7 +682,7 @@
 
 
                     <p id="aviso-professor" class="hint hidden">
-                        Contas de professor só funcionam depois que a gestão aprovar.
+                        Contas de professor só funcionam depois que o professor master aprovar.
                     </p>
 
                     <div id="erro-cadastro" class="erro"></div>
@@ -1033,7 +1033,7 @@
                 </div>
 
                 <div>
-                    <small>PROFESSOR</small>
+                    <small id="cargo-professor">PROFESSOR</small>
                     <strong id="nome-professor-header">RAFAEL</strong>
                 </div>
 
@@ -1247,6 +1247,24 @@
             </div>
 
 
+            <section id="painel-master" class="panel-box spaced hidden">
+
+                <div class="panel-heading">
+                    <div>
+                        <span>PROFESSOR MASTER</span>
+                        <h2>Professores aguardando aprovação</h2>
+                    </div>
+
+                    <strong id="total-pendentes-master">00</strong>
+                </div>
+
+                <div id="erro-pendentes-master" class="erro"></div>
+
+                <div id="lista-pendentes-master"></div>
+
+            </section>
+
+
             <section class="panel-box spaced">
 
                 <div class="panel-heading">
@@ -1303,7 +1321,7 @@
                 </div>
 
                 <div>
-                    <small>GESTÃO</small>
+                    <small>GESTÃO · MASTER</small>
                     <strong>RECEPÇÃO</strong>
                 </div>
 

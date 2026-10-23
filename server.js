@@ -16,6 +16,7 @@ const {
     listarProfessoresAtivos,
     definirProfessorDoAluno,
     definirPlanoDoAluno,
+    gerarMensalidadesDoMes,
     listarAlunosDoProfessor,
     buscarUsuarioPorNome,
     listarProfessoresPendentes,
@@ -48,6 +49,8 @@ const COOKIE = "serfit_sessao";
 if (contarUsuarios() === 0) {
     semear();
 }
+
+gerarMensalidadesDoMes();
 
 
 app.use(express.json());
@@ -159,7 +162,7 @@ app.post("/api/login", (req, res) => {
 
     if (usuario.status === "pendente") {
         return res.status(403).json({
-            erro: "Seu cadastro de professor está aguardando aprovação da gestão."
+            erro: "Seu cadastro de professor está aguardando aprovação do professor master."
         });
     }
 
@@ -173,7 +176,18 @@ function iniciarSessao(res, usuario) {
 
     res.cookie(COOKIE, token, opcoesCookie());
 
-    res.json({ nome: usuario.nome, tipo: usuario.tipo, turno: usuario.turno });
+    res.json(dadosPublicos(usuario));
+}
+
+
+function dadosPublicos(usuario) {
+
+    return {
+        nome: usuario.nome,
+        tipo: usuario.tipo,
+        turno: usuario.turno,
+        master: Boolean(usuario.master)
+    };
 }
 
 
@@ -241,7 +255,7 @@ app.post("/api/cadastro", (req, res) => {
 
         return res.status(202).json({
             pendente: true,
-            mensagem: "Cadastro enviado. Você poderá entrar assim que a gestão aprovar."
+            mensagem: "Cadastro enviado. Você poderá entrar assim que o professor master aprovar."
         });
     }
 
@@ -281,7 +295,7 @@ app.get("/api/me", (req, res) => {
         return res.status(401).json({ erro: "Não autenticado." });
     }
 
-    res.json({ nome: usuario.nome, tipo: usuario.tipo, turno: usuario.turno });
+    res.json(dadosPublicos(usuario));
 });
 
 
@@ -383,16 +397,30 @@ app.get("/api/professor/alunos", exigirLogin("professor"), (req, res) => {
 
 
 /* ==========================================
-   APROVAÇÃO DE PROFESSORES (GESTÃO)
+   APROVAÇÃO DE PROFESSORES
+   (gestão ou professor master)
 ========================================== */
 
-app.get("/api/professores/pendentes", exigirLogin("gestao"), (req, res) => {
+function exigirGestorDeProfessores(req, res, next) {
+
+    exigirLogin("gestao", "professor")(req, res, () => {
+
+        if (req.usuario.tipo === "professor" && !req.usuario.master) {
+            return res.status(403).json({ erro: "Só o professor master pode aprovar professores." });
+        }
+
+        next();
+    });
+}
+
+
+app.get("/api/professores/pendentes", exigirGestorDeProfessores, (req, res) => {
 
     res.json(listarProfessoresPendentes());
 });
 
 
-app.post("/api/professores/:id/aprovar", exigirLogin("gestao"), (req, res) => {
+app.post("/api/professores/:id/aprovar", exigirGestorDeProfessores, (req, res) => {
 
     if (!aprovarProfessor(Number(req.params.id))) {
         return res.status(404).json({ erro: "Cadastro pendente não encontrado." });
@@ -402,7 +430,7 @@ app.post("/api/professores/:id/aprovar", exigirLogin("gestao"), (req, res) => {
 });
 
 
-app.delete("/api/professores/:id", exigirLogin("gestao"), (req, res) => {
+app.delete("/api/professores/:id", exigirGestorDeProfessores, (req, res) => {
 
     if (!recusarProfessor(Number(req.params.id))) {
         return res.status(404).json({ erro: "Cadastro pendente não encontrado." });
@@ -449,11 +477,15 @@ app.post("/api/avisos", exigirLogin("professor", "gestao"), (req, res) => {
 
 app.get("/api/cobrancas/minhas", exigirLogin("aluno"), (req, res) => {
 
+    gerarMensalidadesDoMes();
+
     res.json(listarCobrancasDoAluno(req.usuario.id));
 });
 
 
 app.get("/api/cobrancas/meses", exigirLogin("gestao"), (req, res) => {
+
+    gerarMensalidadesDoMes();
 
     res.json(listarMesesComCobranca());
 });

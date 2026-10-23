@@ -412,6 +412,15 @@ function abrirPainel(usuario) {
 
         badge.classList.toggle("hidden", !turno);
 
+        document.getElementById("cargo-professor").textContent =
+            usuario.master ? "PROFESSOR MASTER" : "PROFESSOR";
+
+        document.getElementById("painel-master").classList.toggle("hidden", !usuario.master);
+
+        if (usuario.master) {
+            carregarPendentes("-master");
+        }
+
         mostrarPagina("professor");
 
         carregarAlunosDoProfessor();
@@ -1126,7 +1135,7 @@ async function carregarCobrancasDoAluno() {
 
         valor.textContent = "—";
 
-        mes.textContent = "Nenhuma mensalidade lançada";
+        mes.textContent = "Escolha seu plano em \"Meu plano\"";
 
         status.textContent = "";
     }
@@ -1222,11 +1231,12 @@ async function alterarSituacao(id, situacao) {
    APROVAÇÃO DE PROFESSORES
 ========================================== */
 
-async function carregarPendentes() {
+// sufixo: "" no painel da gestão, "-master" no painel do professor master
+async function carregarPendentes(sufixo = "") {
 
-    const lista = document.getElementById("lista-pendentes");
+    const lista = document.getElementById(`lista-pendentes${sufixo}`);
 
-    const erro = document.getElementById("erro-pendentes");
+    const erro = document.getElementById(`erro-pendentes${sufixo}`);
 
     erro.textContent = "";
 
@@ -1245,7 +1255,7 @@ async function carregarPendentes() {
     }
 
 
-    document.getElementById("total-pendentes").textContent =
+    document.getElementById(`total-pendentes${sufixo}`).textContent =
         String(pendentes.length).padStart(2, "0");
 
     lista.innerHTML = pendentes.length === 0
@@ -1260,14 +1270,14 @@ async function carregarPendentes() {
                         · pediu em ${formatarData(professor.criado_em)}
                     </span>
                 </div>
-                <button class="btn-small" onclick="decidirProfessor(${professor.id}, true)">Aprovar</button>
-                <button class="btn-small ghost" onclick="decidirProfessor(${professor.id}, false)">Recusar</button>
+                <button class="btn-small" onclick="decidirProfessor(${professor.id}, true, '${sufixo}')">Aprovar</button>
+                <button class="btn-small ghost" onclick="decidirProfessor(${professor.id}, false, '${sufixo}')">Recusar</button>
             </div>
         `).join("");
 }
 
 
-async function decidirProfessor(id, aprovar) {
+async function decidirProfessor(id, aprovar, sufixo = "") {
 
     if (!aprovar && !confirm("Recusar e apagar este cadastro?")) {
         return;
@@ -1282,11 +1292,11 @@ async function decidirProfessor(id, aprovar) {
 
     } catch (falha) {
 
-        document.getElementById("erro-pendentes").textContent = falha.message;
+        document.getElementById(`erro-pendentes${sufixo}`).textContent = falha.message;
 
     }
 
-    carregarPendentes();
+    carregarPendentes(sufixo);
 }
 
 
