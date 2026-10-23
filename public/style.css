@@ -1788,6 +1788,144 @@ a {
 }
 
 
+.plano-opcoes {
+
+    display: grid;
+
+    grid-template-columns: 1fr 1fr;
+
+    gap: 8px;
+}
+
+
+.plano-opcoes label {
+
+    margin: 0;
+}
+
+
+.plano-opcoes input {
+
+    position: absolute;
+
+    opacity: 0;
+}
+
+
+.plano-opcoes span {
+
+    display: block;
+
+    height: 100%;
+
+    padding: 13px;
+
+    border: 1px solid #ddd;
+
+    border-radius: 9px;
+
+    cursor: pointer;
+
+    transition: .25s;
+}
+
+
+.plano-opcoes strong {
+
+    display: block;
+
+    font-size: 13px;
+}
+
+
+.plano-opcoes em {
+
+    display: block;
+
+    margin-top: 4px;
+
+    font-style: normal;
+
+    font-size: 11px;
+
+    color: #888;
+}
+
+
+.plano-opcoes input:checked + span {
+
+    border-color: var(--red);
+
+    background: #fff5f5;
+}
+
+
+.plano-opcoes input:checked + span strong {
+
+    color: var(--red);
+}
+
+
+.plano-opcoes input:focus-visible + span {
+
+    box-shadow: 0 0 0 4px rgba(237,28,36,.15);
+}
+
+
+.plano-salvar {
+
+    margin-top: 14px;
+}
+
+
+.escolha-professor {
+
+    display: flex;
+
+    gap: 8px;
+
+    margin-top: 12px;
+}
+
+
+.escolha-professor select {
+
+    flex: 1;
+
+    min-width: 0;
+
+    border: 1px solid #ddd;
+
+    border-radius: 7px;
+
+    padding: 8px;
+
+    font-family: inherit;
+
+    font-size: 12px;
+
+    background: white;
+
+    outline: none;
+}
+
+
+.escolha-professor select:focus {
+
+    border-color: var(--red);
+}
+
+
+.students-list {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 8px;
+}
+
+
 .input-wrapper select {
 
     width: 100%;

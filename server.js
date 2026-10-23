@@ -8,7 +8,15 @@ const express = require("express");
 
 const {
     DURACAO_SESSAO,
+    PLANOS,
+    mesAtual,
     criarUsuario,
+    criarCobranca,
+    perfilDoAluno,
+    listarProfessoresAtivos,
+    definirProfessorDoAluno,
+    definirPlanoDoAluno,
+    listarAlunosDoProfessor,
     buscarUsuarioPorNome,
     listarProfessoresPendentes,
     aprovarProfessor,
@@ -186,6 +194,8 @@ app.post("/api/cadastro", (req, res) => {
 
     const turno = String(req.body?.turno || "");
 
+    const plano = String(req.body?.plano || "");
+
     const chave = `cadastro:${req.ip}`;
 
 
@@ -213,6 +223,10 @@ app.post("/api/cadastro", (req, res) => {
         return res.status(400).json({ erro: "Escolha o turno do professor." });
     }
 
+    if (tipo === "aluno" && !PLANOS[plano]) {
+        return res.status(400).json({ erro: "Escolha o seu plano." });
+    }
+
     if (buscarUsuarioPorNome(nome)) {
         return res.status(409).json({ erro: "Já existe uma conta com esse nome." });
     }
@@ -232,7 +246,10 @@ app.post("/api/cadastro", (req, res) => {
     }
 
 
-    const usuario = criarUsuario(nome, senha, "aluno");
+    // aluno nasce sem professor; a mensalidade do mês segue o plano
+    const usuario = criarUsuario(nome, senha, "aluno", { plano });
+
+    criarCobranca(usuario.id, mesAtual(), PLANOS[plano].valor_centavos);
 
     res.status(201);
 
@@ -293,6 +310,76 @@ function exigirLogin(...tipos) {
         next();
     };
 }
+
+
+/* ==========================================
+   PLANOS
+========================================== */
+
+app.get("/api/planos", (req, res) => {
+
+    res.json(PLANOS);
+});
+
+
+/* ==========================================
+   ALUNO: PLANO E PROFESSOR
+========================================== */
+
+app.get("/api/aluno/perfil", exigirLogin("aluno"), (req, res) => {
+
+    res.json(perfilDoAluno(req.usuario.id));
+});
+
+
+app.get("/api/professores", exigirLogin("aluno"), (req, res) => {
+
+    res.json(listarProfessoresAtivos());
+});
+
+
+app.put("/api/aluno/professor", exigirLogin("aluno"), (req, res) => {
+
+    const valor = req.body?.professorId;
+
+    const professorId = valor === null || valor === "" || valor === undefined
+        ? null
+        : Number(valor);
+
+    if (professorId !== null && !Number.isInteger(professorId)) {
+        return res.status(400).json({ erro: "Professor inválido." });
+    }
+
+    if (!definirProfessorDoAluno(req.usuario.id, professorId)) {
+        return res.status(404).json({ erro: "Professor não encontrado." });
+    }
+
+    res.json(perfilDoAluno(req.usuario.id));
+});
+
+
+app.put("/api/aluno/plano", exigirLogin("aluno"), (req, res) => {
+
+    const plano = String(req.body?.plano || "");
+
+    if (!PLANOS[plano]) {
+        return res.status(400).json({ erro: "Plano inválido." });
+    }
+
+    definirPlanoDoAluno(req.usuario.id, plano);
+
+    res.json(perfilDoAluno(req.usuario.id));
+});
+
+
+/* ==========================================
+   PROFESSOR: MEUS ALUNOS
+========================================== */
+
+app.get("/api/professor/alunos", exigirLogin("professor"), (req, res) => {
+
+    res.json(listarAlunosDoProfessor(req.usuario.id));
+});
 
 
 /* ==========================================

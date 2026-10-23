@@ -66,6 +66,36 @@ if (!colunasUsuarios.includes("turno")) {
     db.exec("ALTER TABLE usuarios ADD COLUMN turno TEXT");
 }
 
+if (!colunasUsuarios.includes("plano")) {
+    // musculacao | musculacao_danca (só alunos)
+    db.exec("ALTER TABLE usuarios ADD COLUMN plano TEXT");
+    db.exec("UPDATE usuarios SET plano = 'musculacao' WHERE tipo = 'aluno'");
+}
+
+if (!colunasUsuarios.includes("professor_id")) {
+    // professor escolhido pelo aluno (opcional)
+    db.exec("ALTER TABLE usuarios ADD COLUMN professor_id INTEGER REFERENCES usuarios(id) ON DELETE SET NULL");
+}
+
+
+/* ==========================================
+   PLANOS
+========================================== */
+
+const PLANOS = {
+    musculacao:       { nome: "Musculação",         valor_centavos: 12000 },
+    musculacao_danca: { nome: "Musculação e dança", valor_centavos: 16000 }
+};
+
+
+// mês atual no formato AAAA-MM (horário local)
+function mesAtual() {
+
+    const hoje = new Date();
+
+    return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}`;
+}
+
 
 /* ==========================================
    SENHAS (scrypt + salt)
@@ -101,20 +131,102 @@ function normalizarNome(nome) {
 }
 
 
-function criarUsuario(nome, senha, tipo, { status = "ativo", turno = null } = {}) {
+function criarUsuario(nome, senha, tipo, { status = "ativo", turno = null, plano = null } = {}) {
 
     const { lastInsertRowid } = db.prepare(
-        "INSERT INTO usuarios (nome, senha_hash, tipo, status, turno) VALUES (?, ?, ?, ?, ?)"
-    ).run(normalizarNome(nome), gerarHash(senha), tipo, status, turno);
+        "INSERT INTO usuarios (nome, senha_hash, tipo, status, turno, plano) VALUES (?, ?, ?, ?, ?, ?)"
+    ).run(normalizarNome(nome), gerarHash(senha), tipo, status, turno, plano);
 
     return buscarUsuarioPorId(lastInsertRowid);
+}
+
+
+/* ==========================================
+   ALUNO: PLANO E PROFESSOR
+========================================== */
+
+function perfilDoAluno(alunoId) {
+
+    const aluno = db.prepare(`
+        SELECT aluno.plano, professor.id AS professor_id, professor.nome AS professor_nome, professor.turno AS professor_turno
+        FROM usuarios AS aluno
+        LEFT JOIN usuarios AS professor
+            ON professor.id = aluno.professor_id AND professor.status = 'ativo'
+        WHERE aluno.id = ?
+    `).get(alunoId);
+
+    return {
+        plano: aluno.plano,
+        professor: aluno.professor_id
+            ? { id: aluno.professor_id, nome: aluno.professor_nome, turno: aluno.professor_turno }
+            : null
+    };
+}
+
+
+function listarProfessoresAtivos() {
+
+    return db.prepare(`
+        SELECT id, nome, turno
+        FROM usuarios
+        WHERE tipo = 'professor' AND status = 'ativo'
+        ORDER BY turno, nome
+    `).all();
+}
+
+
+function definirProfessorDoAluno(alunoId, professorId) {
+
+    if (professorId !== null) {
+
+        const professor = db.prepare(
+            "SELECT id FROM usuarios WHERE id = ? AND tipo = 'professor' AND status = 'ativo'"
+        ).get(professorId);
+
+        if (!professor) {
+            return false;
+        }
+    }
+
+    db.prepare(
+        "UPDATE usuarios SET professor_id = ? WHERE id = ? AND tipo = 'aluno'"
+    ).run(professorId, alunoId);
+
+    return true;
+}
+
+
+// troca o plano e ajusta a mensalidade do mês, se ainda não foi paga
+function definirPlanoDoAluno(alunoId, plano) {
+
+    db.prepare(
+        "UPDATE usuarios SET plano = ? WHERE id = ? AND tipo = 'aluno'"
+    ).run(plano, alunoId);
+
+    db.prepare(`
+        UPDATE cobrancas SET valor_centavos = ?
+        WHERE aluno_id = ? AND mes = ? AND situacao != 'paga'
+    `).run(PLANOS[plano].valor_centavos, alunoId, mesAtual());
+
+    criarCobranca(alunoId, mesAtual(), PLANOS[plano].valor_centavos);
+}
+
+
+function listarAlunosDoProfessor(professorId) {
+
+    return db.prepare(`
+        SELECT id, nome, plano
+        FROM usuarios
+        WHERE tipo = 'aluno' AND professor_id = ?
+        ORDER BY nome
+    `).all(professorId);
 }
 
 
 function buscarUsuarioPorNome(nome) {
 
     return db.prepare(
-        "SELECT id, nome, senha_hash, tipo, status, turno FROM usuarios WHERE nome = ?"
+        "SELECT id, nome, senha_hash, tipo, status, turno, plano, professor_id FROM usuarios WHERE nome = ?"
     ).get(normalizarNome(nome));
 }
 
@@ -323,7 +435,14 @@ function contarCobrancas() {
 
 module.exports = {
     DURACAO_SESSAO,
+    PLANOS,
+    mesAtual,
     criarUsuario,
+    perfilDoAluno,
+    listarProfessoresAtivos,
+    definirProfessorDoAluno,
+    definirPlanoDoAluno,
+    listarAlunosDoProfessor,
     buscarUsuarioPorNome,
     buscarUsuarioPorId,
     definirTurno,

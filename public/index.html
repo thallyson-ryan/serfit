@@ -605,6 +605,30 @@
                     </div>
 
 
+                    <div id="grupo-plano" class="input-group">
+
+                        <label>Plano</label>
+
+                        <div class="plano-opcoes">
+                            <label>
+                                <input type="radio" name="plano-cadastro" value="musculacao" checked>
+                                <span>
+                                    <strong>Musculação</strong>
+                                    <em>R$ 120,00 / mês</em>
+                                </span>
+                            </label>
+                            <label>
+                                <input type="radio" name="plano-cadastro" value="musculacao_danca">
+                                <span>
+                                    <strong>Musculação e dança</strong>
+                                    <em>R$ 160,00 / mês</em>
+                                </span>
+                            </label>
+                        </div>
+
+                    </div>
+
+
                     <div id="grupo-turno" class="input-group hidden">
 
                         <label for="cadastro-turno">Turno</label>
@@ -761,15 +785,25 @@
 
                         <small>SEU PROFESSOR</small>
 
-                        <h2>RAFAEL</h2>
+                        <h2 id="professor-aluno-nome">Sem professor</h2>
 
-                        <p>
-                            Professor responsável
+                        <p id="professor-aluno-turno">
+                            Escolha um professor abaixo
                         </p>
 
-                    </div>
+                        <div class="escolha-professor">
 
-                    <span class="card-arrow">↗</span>
+                            <select id="select-professor" aria-label="Escolher professor"></select>
+
+                            <button class="btn-small" onclick="salvarProfessor()">
+                                Salvar
+                            </button>
+
+                        </div>
+
+                        <p id="mensagem-professor" class="form-message"></p>
+
+                    </div>
 
                 </article>
 
@@ -799,6 +833,41 @@
                 </article>
 
             </div>
+
+
+            <section class="panel-box spaced">
+
+                <div class="panel-heading">
+                    <div>
+                        <span>MEU PLANO</span>
+                        <h2 id="plano-atual-nome">Musculação</h2>
+                    </div>
+                </div>
+
+                <div class="plano-opcoes">
+                    <label>
+                        <input type="radio" name="plano-aluno" value="musculacao">
+                        <span>
+                            <strong>Musculação</strong>
+                            <em>R$ 120,00 / mês</em>
+                        </span>
+                    </label>
+                    <label>
+                        <input type="radio" name="plano-aluno" value="musculacao_danca">
+                        <span>
+                            <strong>Musculação e dança</strong>
+                            <em>R$ 160,00 / mês</em>
+                        </span>
+                    </label>
+                </div>
+
+                <button class="btn-small plano-salvar" onclick="salvarPlano()">
+                    Trocar plano
+                </button>
+
+                <p id="mensagem-plano" class="form-message"></p>
+
+            </section>
 
 
             <div class="dash-grid">
@@ -1014,35 +1083,12 @@
                             <h2>Meus alunos</h2>
                         </div>
 
-                        <strong>01</strong>
+                        <strong id="total-alunos">00</strong>
 
                     </div>
 
 
-                    <button
-                        class="student-item selected"
-                        onclick="selecionarAluno()"
-                    >
-
-                        <div class="student-avatar">
-                            C
-                        </div>
-
-                        <div class="student-info">
-
-                            <strong>CAIO</strong>
-
-                            <span>
-                                Aluno ativo
-                            </span>
-
-                        </div>
-
-                        <span class="student-arrow">
-                            →
-                        </span>
-
-                    </button>
+                    <div id="lista-alunos" class="students-list"></div>
 
                 </aside>
 
@@ -1055,8 +1101,8 @@
 
                             <span>ALUNO SELECIONADO</span>
 
-                            <h2>
-                                CAIO
+                            <h2 id="aluno-selecionado">
+                                —
                             </h2>
 
                         </div>

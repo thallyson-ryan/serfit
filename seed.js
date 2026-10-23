@@ -9,6 +9,7 @@ const {
     criarUsuario,
     buscarUsuarioPorNome,
     definirTurno,
+    definirProfessorDoAluno,
     criarAviso,
     contarAvisos,
     criarCobranca,
@@ -16,14 +17,18 @@ const {
 } = require("./db");
 
 
+// professores primeiro: alunos podem apontar para eles
 const usuariosIniciais = [
-    { nome: "CAIO",   senha: "1234", tipo: "aluno" },
-    { nome: "ANA",    senha: "1234", tipo: "aluno" },
-    { nome: "BRUNO",  senha: "1234", tipo: "aluno" },
-    { nome: "DIEGO",  senha: "1234", tipo: "aluno" },
-    { nome: "ELISA",  senha: "1234", tipo: "aluno" },
-    { nome: "RAFAEL", senha: "1234", tipo: "professor", turno: "manha" },
-    { nome: "GESTAO", senha: "1234", tipo: "gestao" }
+    { nome: "RAFAEL",  senha: "1234", tipo: "professor", turno: "manha" },
+    { nome: "MARINA",  senha: "1234", tipo: "professor", turno: "manha" },
+    { nome: "LUCAS",   senha: "1234", tipo: "professor", turno: "tarde" },
+    { nome: "JULIANA", senha: "1234", tipo: "professor", turno: "tarde" },
+    { nome: "CAIO",    senha: "1234", tipo: "aluno", plano: "musculacao", professor: "RAFAEL" },
+    { nome: "ANA",     senha: "1234", tipo: "aluno", plano: "musculacao" },
+    { nome: "BRUNO",   senha: "1234", tipo: "aluno", plano: "musculacao" },
+    { nome: "DIEGO",   senha: "1234", tipo: "aluno", plano: "musculacao" },
+    { nome: "ELISA",   senha: "1234", tipo: "aluno", plano: "musculacao" },
+    { nome: "GESTAO",  senha: "1234", tipo: "gestao" }
 ];
 
 
@@ -50,20 +55,28 @@ function semear() {
 
     usuariosIniciais.forEach(usuario => {
 
-        const existente = buscarUsuarioPorNome(usuario.nome);
+        let registro = buscarUsuarioPorNome(usuario.nome);
 
-        if (existente) {
+        if (registro) {
 
-            if (usuario.turno && !existente.turno) {
-                definirTurno(existente.id, usuario.turno);
+            if (usuario.turno && !registro.turno) {
+                definirTurno(registro.id, usuario.turno);
             }
 
-            return;
+        } else {
+
+            registro = criarUsuario(usuario.nome, usuario.senha, usuario.tipo, {
+                turno: usuario.turno,
+                plano: usuario.plano
+            });
+
+            console.log(`Usuário criado: ${usuario.nome} (${usuario.tipo})`);
         }
 
-        criarUsuario(usuario.nome, usuario.senha, usuario.tipo, { turno: usuario.turno });
 
-        console.log(`Usuário criado: ${usuario.nome} (${usuario.tipo})`);
+        if (usuario.professor && !buscarUsuarioPorNome(usuario.nome).professor_id) {
+            definirProfessorDoAluno(registro.id, buscarUsuarioPorNome(usuario.professor).id);
+        }
     });
 
 

@@ -212,6 +212,7 @@ function atualizarTipoConta() {
 
     document.getElementById("grupo-turno").classList.toggle("hidden", !professor);
     document.getElementById("aviso-professor").classList.toggle("hidden", !professor);
+    document.getElementById("grupo-plano").classList.toggle("hidden", professor);
 }
 
 
@@ -235,6 +236,8 @@ async function criarConta(event) {
 
     const turno = document.getElementById("cadastro-turno").value;
 
+    const plano = document.querySelector("input[name='plano-cadastro']:checked").value;
+
 
     erro.textContent = "";
 
@@ -255,7 +258,7 @@ async function criarConta(event) {
 
         const dados = await api("/api/cadastro", {
             method: "POST",
-            body: JSON.stringify({ nome, senha, tipo, turno })
+            body: JSON.stringify({ nome, senha, tipo, turno, plano })
         });
 
 
@@ -378,6 +381,8 @@ function abrirPainel(usuario) {
 
         mostrarPagina("aluno");
 
+        carregarPerfilDoAluno();
+
         carregarCobrancasDoAluno();
 
     }
@@ -408,6 +413,8 @@ function abrirPainel(usuario) {
         badge.classList.toggle("hidden", !turno);
 
         mostrarPagina("professor");
+
+        carregarAlunosDoProfessor();
 
     }
 
@@ -583,8 +590,16 @@ function salvarTreino() {
         );
 
 
+    if (!alunoSelecionado) {
+
+        mensagem.textContent = "Selecione um aluno primeiro.";
+
+        return;
+    }
+
+
     mensagem.textContent =
-        "✓ Treino do CAIO salvo com sucesso!";
+        `✓ Treino de ${alunoSelecionado} salvo com sucesso!`;
 
 
     setTimeout(() => {
@@ -597,15 +612,202 @@ function salvarTreino() {
 
 
 /* ==========================================
-   SELECIONAR ALUNO
+   PROFESSOR - MEUS ALUNOS
 ========================================== */
 
-function selecionarAluno() {
+let alunoSelecionado = null;
 
-    alert(
-        "Aluno selecionado: CAIO"
-    );
 
+async function carregarAlunosDoProfessor() {
+
+    const lista = document.getElementById("lista-alunos");
+
+    let alunos;
+
+    try {
+
+        alunos = await api("/api/professor/alunos");
+
+    } catch (falha) {
+
+        lista.innerHTML = `<p class="erro">${escaparHtml(falha.message)}</p>`;
+
+        return;
+    }
+
+
+    document.getElementById("total-alunos").textContent =
+        String(alunos.length).padStart(2, "0");
+
+    lista.innerHTML = alunos.length === 0
+        ? `<p class="empty">Nenhum aluno escolheu você ainda.</p>`
+        : alunos.map(aluno => `
+            <button class="student-item" data-nome="${escaparHtml(aluno.nome)}" onclick="selecionarAluno(this)">
+                <div class="student-avatar">${escaparHtml(aluno.nome[0])}</div>
+                <div class="student-info">
+                    <strong>${escaparHtml(aluno.nome)}</strong>
+                    <span>${nomesPlanos[aluno.plano] || "Sem plano"}</span>
+                </div>
+                <span class="student-arrow">→</span>
+            </button>
+        `).join("");
+
+    const primeiro = lista.querySelector(".student-item");
+
+    if (primeiro) {
+        selecionarAluno(primeiro);
+    } else {
+        alunoSelecionado = null;
+        document.getElementById("aluno-selecionado").textContent = "—";
+    }
+}
+
+
+function selecionarAluno(botao) {
+
+    document.querySelectorAll("#lista-alunos .student-item")
+        .forEach(item => item.classList.toggle("selected", item === botao));
+
+    alunoSelecionado = botao.dataset.nome;
+
+    document.getElementById("aluno-selecionado").textContent = alunoSelecionado;
+}
+
+
+/* ==========================================
+   ALUNO - PLANO E PROFESSOR
+========================================== */
+
+const nomesPlanos = {
+    musculacao: "Musculação · R$ 120,00",
+    musculacao_danca: "Musculação e dança · R$ 160,00"
+};
+
+
+function nomeTurno(turno) {
+
+    return turnos[turno] ? `Turno da ${turnos[turno].nome.toLowerCase()}` : "";
+}
+
+
+function mostrarPerfilDoAluno(perfil) {
+
+    const professor = perfil.professor;
+
+    document.getElementById("professor-aluno-nome").textContent =
+        professor ? professor.nome : "Sem professor";
+
+    document.getElementById("professor-aluno-turno").textContent =
+        professor ? nomeTurno(professor.turno) : "Escolha um professor abaixo";
+
+    document.getElementById("select-professor").value =
+        professor ? String(professor.id) : "";
+
+
+    document.getElementById("plano-atual-nome").textContent =
+        nomesPlanos[perfil.plano] || "Escolha um plano";
+
+    const opcao = document.querySelector(`input[name='plano-aluno'][value='${perfil.plano}']`);
+
+    if (opcao) {
+        opcao.checked = true;
+    }
+}
+
+
+async function carregarPerfilDoAluno() {
+
+    try {
+
+        const [professores, perfil] = await Promise.all([
+            api("/api/professores"),
+            api("/api/aluno/perfil")
+        ]);
+
+        document.getElementById("select-professor").innerHTML =
+            `<option value="">Sem professor</option>` +
+            professores.map(professor => `
+                <option value="${professor.id}">
+                    ${escaparHtml(professor.nome)} · ${nomeTurno(professor.turno)}
+                </option>
+            `).join("");
+
+        mostrarPerfilDoAluno(perfil);
+
+    } catch (falha) {
+
+        document.getElementById("mensagem-professor").textContent = falha.message;
+
+    }
+}
+
+
+function mostrarMensagem(id, texto, erro = false) {
+
+    const mensagem = document.getElementById(id);
+
+    mensagem.textContent = texto;
+
+    mensagem.classList.toggle("error", erro);
+
+    if (!erro) {
+        setTimeout(() => { mensagem.textContent = ""; }, 3000);
+    }
+}
+
+
+async function salvarProfessor() {
+
+    const valor = document.getElementById("select-professor").value;
+
+    try {
+
+        const perfil = await api("/api/aluno/professor", {
+            method: "PUT",
+            body: JSON.stringify({ professorId: valor === "" ? null : Number(valor) })
+        });
+
+        mostrarPerfilDoAluno(perfil);
+
+        mostrarMensagem(
+            "mensagem-professor",
+            perfil.professor ? `✓ Agora seu professor é ${perfil.professor.nome}.` : "✓ Você está sem professor."
+        );
+
+    } catch (falha) {
+
+        mostrarMensagem("mensagem-professor", falha.message, true);
+
+    }
+}
+
+
+async function salvarPlano() {
+
+    const escolhido = document.querySelector("input[name='plano-aluno']:checked");
+
+    if (!escolhido) {
+        return;
+    }
+
+    try {
+
+        const perfil = await api("/api/aluno/plano", {
+            method: "PUT",
+            body: JSON.stringify({ plano: escolhido.value })
+        });
+
+        mostrarPerfilDoAluno(perfil);
+
+        mostrarMensagem("mensagem-plano", "✓ Plano atualizado. A mensalidade deste mês já segue o novo valor.");
+
+        carregarCobrancasDoAluno();
+
+    } catch (falha) {
+
+        mostrarMensagem("mensagem-plano", falha.message, true);
+
+    }
 }
 
 
